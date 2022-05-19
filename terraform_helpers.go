@@ -1,4 +1,4 @@
-package terrahelpers
+package terra_helper
 
 import (
 	"testing"
@@ -18,8 +18,10 @@ func SetupTesting(
 
 	testDataExists := test_structure.IsTestDataPresent(t, test_structure.FormatTestDataPath(workingDir, "TerraformOptions.json"))
 
+	var l *logger.Logger
+
 	if testDataExists {
-		logger.Logf(t, "Found and loaded test data in %s", workingDir)
+		l.Logf(t, "Found and loaded test data in %s", workingDir)
 		return test_structure.LoadTerraformOptions(t, workingDir)
 	} else {
 		terraformOptions := &terraform.Options{
@@ -31,7 +33,7 @@ func SetupTesting(
 
 		test_structure.SaveTerraformOptions(t, workingDir, terraformOptions)
 
-		logger.Logf(t, "Saved test data in %s so it can be reused later", workingDir)
+		l.Logf(t, "Saved test data in %s so it can be reused later", workingDir)
 
 		return terraformOptions
 	}

@@ -1,22 +1,36 @@
-package terrahelpers
+package terra_helper
 
 import (
 	"context"
 	"fmt"
+	"os"
 
 	vault "github.com/hashicorp/vault/api"
 	auth "github.com/hashicorp/vault/api/auth/approle"
 )
 
+type Secret struct {
+	Data map[string]interface{}
+}
+
+func NewSecret(roleID string,
+	wrappedToken string,
+	vaultSecretPath string) *Secret {
+
+	r := Secret{}
+	r.Data = getVaultSecret(roleID, wrappedToken, vaultSecretPath)
+
+	return &r
+}
+
 //------------------------------------------------------------------------------------------------
 // Fetches a key-value secret (kv-v2) after authenticating via AppRole.
 //------------------------------------------------------------------------------------------------
-func GetSecretWithAppRole(
+func getVaultSecret(
 	roleID string,
 	wrappedToken string,
 	vaultSecretPath string,
-	vaultSecretMap map[string]string,
-) map[string]string {
+) map[string]interface{} {
 	config := vault.DefaultConfig() // modify for more granular configuration
 
 	client, err := vault.NewClient(config)
@@ -60,24 +74,25 @@ func GetSecretWithAppRole(
 		panic(fmt.Errorf("data type assertion failed: %T %#v", secret.Data["data"], secret.Data["data"]))
 	}
 
-	terraformEnvVars, err := getTfEnvVars(data, vaultSecretMap)
-	if err != nil {
-		panic(fmt.Errorf("Cant get data"))
-	} else {
-		return terraformEnvVars
-	}
+	return data
 
 }
 
-func getTfEnvVars(data map[string]interface{}, vaultSecretMap map[string]string) (map[string]string, error) {
-	for varName, secretName := range vaultSecretMap {
-		value, ok := data[secretName].(string)
+func (s *Secret) MapData(dataMap map[string]string) map[string]string {
+	for keyName, valueName := range dataMap {
+		value, ok := s.Data[valueName].(string)
 		if !ok {
-			return map[string]string{}, fmt.Errorf("value type assertion failed: %T %#v", data[secretName], data[secretName])
+			panic(fmt.Sprintf("lookup failed for key / value pair  %s / %s ", keyName, valueName))
 		} else {
-			vaultSecretMap[varName] = value
+			dataMap[keyName] = value
 		}
 	}
 
-	return vaultSecretMap, nil
+	return dataMap
+}
+
+func (s *Secret) SetEnv(data map[string]string) {
+	for key, value := range data {
+		os.Setenv(key, value)
+	}
 }
